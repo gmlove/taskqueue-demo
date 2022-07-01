@@ -2,25 +2,11 @@ package com.brightliao.taskqueue;
 
 import java.util.List;
 
-public class TaskRepository {
+public interface TaskRepository {
 
-    public List<Task> findNewTasks(int maxCount) {
-        return null;
-    }
+    List<Task> findNewTasks(int maxCount);
 
-    public void markTaskStarted(List<Long> taskIds) {
+    Task save(Task task);
 
-    }
-
-    public void markTaskSucceeded(List<Long> taskIds) {
-
-    }
-
-    public void markTaskFailed(List<Long> taskIds) {
-
-    }
-
-    public void save(Task task) {
-
-    }
+    List<Task> saveAll(List<Task> tasks);
 }
