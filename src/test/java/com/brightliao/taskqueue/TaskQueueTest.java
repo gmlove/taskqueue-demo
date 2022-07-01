@@ -1,12 +1,16 @@
 package com.brightliao.taskqueue;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import org.junit.jupiter.api.Test;
 
 public class TaskQueueTest {
+
     @Test
     void should_run_task_from_queue() throws InterruptedException {
         var queue = new TaskQueue();
@@ -31,5 +35,19 @@ public class TaskQueueTest {
         Thread.sleep(100);
 
         verify(task2Runnable, times(1)).run(eq(task2Arg));
+    }
+
+    @Data
+    @AllArgsConstructor
+    private class TaskType1Arg {
+
+        private String arg;
+    }
+
+    @Data
+    @AllArgsConstructor
+    private class TaskType2Arg {
+
+        private String arg;
     }
 }
