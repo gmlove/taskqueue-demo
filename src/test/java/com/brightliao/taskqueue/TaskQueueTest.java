@@ -18,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -30,9 +31,9 @@ public class TaskQueueTest {
     void should_run_task_from_queue() throws InterruptedException {
         var tt = mock(TransactionTemplate.class);
         when(tt.execute(any())).thenAnswer(answer ->
-                ((TransactionCallback) answer.getArgument(0)).doInTransaction(null));
+                ((TransactionCallback<?>) answer.getArgument(0)).doInTransaction(new SimpleTransactionStatus()));
         doAnswer(answer -> {
-            ((Consumer<TransactionStatus>) answer.getArgument(0)).accept(null);
+            ((Consumer<TransactionStatus>) answer.getArgument(0)).accept(new SimpleTransactionStatus());
             return null;
         }).when(tt).executeWithoutResult(any());
 
@@ -56,7 +57,7 @@ public class TaskQueueTest {
 
         queue.addTask("task_type_1", task1Arg);
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         // add -> running -> succeeded
         verify(taskRepository, times(3)).save(any(Task.class));
@@ -74,7 +75,7 @@ public class TaskQueueTest {
 
         queue.addTask("task_type_2", task2Arg);
 
-        Thread.sleep(500);
+        Thread.sleep(2000);
 
         // add -> running -> failed
         verify(taskRepository, times(6)).save(any(Task.class));

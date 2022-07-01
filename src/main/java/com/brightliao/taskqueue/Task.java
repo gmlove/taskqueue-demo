@@ -20,6 +20,7 @@ public class Task {
     private String taskArg;
     private TaskStatus status;
     private String message;
+    private int version;
     private LocalDateTime createdAt;
     private LocalDateTime startedAt;
     private LocalDateTime runAt;
@@ -36,6 +37,7 @@ public class Task {
         this.taskArg = taskArg;
         this.status = status;
         this.createdAt = LocalDateTime.now();
+        this.version = 0;
     }
 
     public boolean isSucceeded() {
@@ -53,26 +55,34 @@ public class Task {
     public void markRunning() {
         this.status = TaskStatus.RUNNING;
         this.runAt = LocalDateTime.now();
+        version += 1;
     }
 
     public void markStarted() {
         this.status = TaskStatus.STARTED;
         this.startedAt = LocalDateTime.now();
+        version += 1;
     }
 
     public void markSucceeded() {
         this.status = TaskStatus.SUCCEEDED;
         this.endedAt = LocalDateTime.now();
+        version += 1;
     }
 
     public void markFailed(Exception e) {
         this.status = TaskStatus.FAILED;
         this.endedAt = LocalDateTime.now();
         this.message = this.message == null ? e.getMessage() : this.message + "\n" + e.getMessage();
+        version += 1;
     }
 
     public Long getId() {
         return id;
+    }
+
+    public boolean hasId() {
+        return id != null;
     }
 
     public enum TaskStatus {
