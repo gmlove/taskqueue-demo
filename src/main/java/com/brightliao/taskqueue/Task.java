@@ -24,6 +24,7 @@ public class Task {
     private LocalDateTime startedAt;
     private LocalDateTime runAt;
     private LocalDateTime endedAt;
+    private LocalDateTime heartbeatAt;
 
     public Task(String taskType, String taskArg) {
         this(null, taskType, taskArg, TaskStatus.PENDING);

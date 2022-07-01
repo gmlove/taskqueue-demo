@@ -1,5 +1,7 @@
 package com.brightliao.taskqueue;
 
+import static com.brightliao.taskqueue.TaskQueue.HEARTBEAT_INTERVAL;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +10,8 @@ import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -17,6 +21,7 @@ public class TaskQueueConsumer implements InitializingBean {
     private final int tasksToFetchPerTime;
     private final Map<String, TaskRunnable> registeredTasks = new HashMap<>();
     private final Object consumerThreadCoordinator = new Object();
+    private ConcurrentLinkedDeque<Long> runningTaskIds = new ConcurrentLinkedDeque<>();
     private boolean isStopping = false;
     private Thread consumerThread;
 
@@ -51,6 +56,7 @@ public class TaskQueueConsumer implements InitializingBean {
                     }
                 }
                 log.info("found {} tasks.", tasks.size());
+                runningTaskIds.addAll(tasks.stream().map(Task::getId).collect(Collectors.toList()));
                 for (Task task : tasks) {
                     try {
                         log.info("start to run task {}(id={}).", task.getType(), task.getId());
@@ -61,6 +67,8 @@ public class TaskQueueConsumer implements InitializingBean {
                     } catch (Exception e) {
                         queue.markFailed(task, e);
                         log.warn("run task {}(id={}) failed.", task.getType(), task.getId(), e);
+                    } finally {
+                        runningTaskIds.remove(task.getId());
                     }
                 }
             }
@@ -80,5 +88,10 @@ public class TaskQueueConsumer implements InitializingBean {
     @Override
     public void afterPropertiesSet() throws Exception {
         start();
+    }
+
+    @Scheduled(fixedRate = HEARTBEAT_INTERVAL)
+    public void triggerHeartBeat() {
+        queue.heartbeat(runningTaskIds);
     }
 }

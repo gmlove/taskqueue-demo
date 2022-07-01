@@ -1,5 +1,7 @@
 package com.brightliao.taskqueue;
 
+import static java.time.temporal.ChronoUnit.MILLIS;
+
 import com.brightliao.taskqueue.Task.TaskStatus;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -7,10 +9,14 @@ import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.persistence.Column;
@@ -68,8 +74,44 @@ public class JpaTaskRepository implements TaskRepository {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public void updateHeartbeat(List<Long> taskIds) {
+        if (taskIds.isEmpty()) {
+            return;
+        }
+        taskRepository.updateHeartbeat(taskIds, LocalDateTime.now());
+    }
+
+    @Override
+    public void cleanZombieTasks(long heartbeatTimeout) {
+        taskRepository.cleanZombieTasks(heartbeatTimeout);
+    }
+
     @Repository
     public interface InnerJpaTaskRepository extends JpaRepository<TaskEntity, Long> {
+
+        @Modifying
+        @Query("UPDATE JpaTaskRepository$TaskEntity t SET "
+                + "status = :pendingStatus, "
+                + "message = CONCAT('message', '\n', :message) "
+                + "WHERE status in :runningStatus and heartbeatAt < :minHeartbeatTime")
+        int cleanZombieTasks(
+                @Param("minHeartbeatTime") LocalDateTime minHeartbeatTime, @Param("message") String message,
+                @Param("runningStatus") List<TaskStatus> runningStatus, @Param("pendingStatus") TaskStatus pendingStatus);
+
+        default int cleanZombieTasks(@Param("heartbeatTimeout") long heartbeatTimeout) {
+            var minHeartbeatTime = LocalDateTime.now().minus(heartbeatTimeout, MILLIS);
+            var message = String.format("Clean zombie task at [%s].",
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now()));
+            return cleanZombieTasks(minHeartbeatTime, message, List.of(TaskStatus.RUNNING, TaskStatus.STARTED), TaskStatus.PENDING);
+        }
+
+        @Modifying
+        @Query("UPDATE JpaTaskRepository$TaskEntity t SET "
+                + "heartbeatAt = :heartbeatTime "
+                + "WHERE id in :ids")
+        void updateHeartbeat(@Param("ids") List<Long> ids, @Param("heartbeatTime") LocalDateTime heartbeatTime);
+
     }
 
     @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
@@ -99,5 +141,6 @@ public class JpaTaskRepository implements TaskRepository {
         private LocalDateTime startedAt;
         private LocalDateTime runAt;
         private LocalDateTime endedAt;
+        private LocalDateTime heartbeatAt;
     }
 }

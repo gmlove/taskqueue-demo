@@ -4,9 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -15,6 +17,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 @RequiredArgsConstructor
 public class TaskQueue {
 
+    public static final int HEARTBEAT_INTERVAL = 30 * 1000;  // 30s
     private final TaskRepository taskRepository;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;
@@ -71,6 +74,21 @@ public class TaskQueue {
         transactionTemplate.executeWithoutResult(status -> {
             task.markStarted();
             taskRepository.save(task);
+        });
+    }
+
+    @Scheduled(fixedRate = HEARTBEAT_INTERVAL * 3)
+    public void cleanZombieTasks() {
+        transactionTemplate.executeWithoutResult(status -> {
+            taskRepository.cleanZombieTasks(HEARTBEAT_INTERVAL * 3);
+        });
+    }
+
+    public void heartbeat(Iterable<Long> runningTaskIds) {
+        var ids = new ArrayList<Long>();
+        runningTaskIds.forEach(ids::add);
+        transactionTemplate.executeWithoutResult(status -> {
+            taskRepository.updateHeartbeat(ids);
         });
     }
 }

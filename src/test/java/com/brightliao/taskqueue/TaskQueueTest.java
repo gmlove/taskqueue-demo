@@ -3,6 +3,7 @@ package com.brightliao.taskqueue;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
@@ -81,6 +82,12 @@ public class TaskQueueTest {
         verify(taskRepository, times(2)).saveAll(anyList());
         verify(task2Runnable, times(1)).run(eq("{\"arg\":\"some arg\"}"));
         assertThat(task2.isSucceeded()).isEqualTo(false);
+
+        consumer.triggerHeartBeat();
+        verify(taskRepository, times(1)).updateHeartbeat(anyList());
+
+        queue.cleanZombieTasks();
+        verify(taskRepository, times(1)).cleanZombieTasks(anyLong());
     }
 
     private Task someTask(long id, String taskType, String taskArg) {

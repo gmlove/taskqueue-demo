@@ -9,4 +9,8 @@ public interface TaskRepository {
     Task save(Task task);
 
     List<Task> saveAll(List<Task> tasks);
+
+    void updateHeartbeat(List<Long> taskIds);
+
+    void cleanZombieTasks(long heartbeatTimeout);
 }
