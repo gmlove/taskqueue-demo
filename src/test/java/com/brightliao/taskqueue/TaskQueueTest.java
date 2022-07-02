@@ -16,6 +16,7 @@ import com.brightliao.taskqueue.Task.TaskStatus;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.SimpleTransactionStatus;
@@ -25,13 +26,18 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 import java.util.function.Consumer;
 
+@Slf4j
 public class TaskQueueTest {
 
     @Test
     void should_run_task_from_queue() throws InterruptedException {
         var tt = mock(TransactionTemplate.class);
-        when(tt.execute(any())).thenAnswer(answer ->
-                ((TransactionCallback<?>) answer.getArgument(0)).doInTransaction(new SimpleTransactionStatus()));
+        when(tt.execute(any())).thenAnswer(answer -> {
+            final TransactionCallback<?> arg = (TransactionCallback<?>) answer.getArgument(0);
+            log.info("execute in transaction: {}", arg);
+            return arg.doInTransaction(new SimpleTransactionStatus());
+        });
+
         doAnswer(answer -> {
             ((Consumer<TransactionStatus>) answer.getArgument(0)).accept(new SimpleTransactionStatus());
             return null;
@@ -46,7 +52,6 @@ public class TaskQueueTest {
         var task2Runnable = mock(TaskRunnable.class);
         consumer.registerTask("task_type_1", task1Runnable);
         consumer.registerTask("task_type_2", task2Runnable);
-        consumer.start();
 
         // run task1 successfully
         var task1Arg = new TaskType1Arg("some arg");
@@ -56,8 +61,9 @@ public class TaskQueueTest {
         when(taskRepository.save(any())).thenAnswer(answer -> answer.getArgument(0));
 
         queue.addTask("task_type_1", task1Arg);
+        consumer.start();
 
-        Thread.sleep(2000);
+        Thread.sleep(500);
 
         // add -> running -> succeeded
         verify(taskRepository, times(3)).save(any(Task.class));
@@ -75,7 +81,7 @@ public class TaskQueueTest {
 
         queue.addTask("task_type_2", task2Arg);
 
-        Thread.sleep(2000);
+        Thread.sleep(500);
 
         // add -> running -> failed
         verify(taskRepository, times(6)).save(any(Task.class));

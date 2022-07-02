@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -22,6 +23,7 @@ public class TaskQueueConsumer implements InitializingBean {
     private final Map<String, TaskRunnable> registeredTasks = new HashMap<>();
     private final Object consumerThreadCoordinator = new Object();
     private ConcurrentLinkedDeque<Long> runningTaskIds = new ConcurrentLinkedDeque<>();
+    private AtomicBoolean isWaiting = new AtomicBoolean(true);
     private boolean isStopping = false;
     private Thread consumerThread;
 
@@ -47,6 +49,7 @@ public class TaskQueueConsumer implements InitializingBean {
                     try {
                         log.info("no new tasks found, will wait for next round to fetch tasks.");
                         synchronized (consumerThreadCoordinator) {
+                            isWaiting.set(true);
                             consumerThreadCoordinator.wait();
                         }
                         continue;
@@ -55,6 +58,7 @@ public class TaskQueueConsumer implements InitializingBean {
                         continue;
                     }
                 }
+                isWaiting.set(false);
                 log.info("found {} tasks.", tasks.size());
                 runningTaskIds.addAll(tasks.stream().map(Task::getId).collect(Collectors.toList()));
                 for (Task task : tasks) {
@@ -93,5 +97,13 @@ public class TaskQueueConsumer implements InitializingBean {
     @Scheduled(fixedRate = HEARTBEAT_INTERVAL)
     public void triggerHeartBeat() {
         queue.heartbeat(runningTaskIds);
+    }
+
+    public boolean isWaiting() {
+        return isWaiting.get();
+    }
+
+    public boolean isRunning() {
+        return !isWaiting();
     }
 }

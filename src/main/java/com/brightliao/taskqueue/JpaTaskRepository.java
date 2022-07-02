@@ -126,7 +126,7 @@ public class JpaTaskRepository implements TaskRepository {
 
         @Modifying
         @Query("UPDATE JpaTaskRepository$TaskEntity t SET "
-                + "version = version + 1 "
+                + "version = version + 1, "
                 + "heartbeatAt = :heartbeatTime "
                 + "WHERE id in :ids")
         void updateHeartbeat(@Param("ids") List<Long> ids, @Param("heartbeatTime") LocalDateTime heartbeatTime);

@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 @RequiredArgsConstructor
 public class TaskQueue {
 
-    public static final int HEARTBEAT_INTERVAL = 30 * 1000;  // 30s
+    public static final int HEARTBEAT_INTERVAL = 10 * 1000;  // in milliseconds
     private final TaskRepository taskRepository;
     private final TransactionTemplate transactionTemplate;
     private final ObjectMapper objectMapper;

@@ -1,5 +1,7 @@
 package com.brightliao.taskqueue;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
@@ -20,7 +22,7 @@ class TaskQueueApplicationTests {
     private ObjectMapper objectMapper;
 
     @Test
-    void should_runTask() throws InterruptedException {
+    void should_runTask_periodically_and_fetchNewTasks_immediately_after_new_task_added() throws InterruptedException {
         queueConsumer.registerTask("task_1", argString -> {
             try {
                 var arg = objectMapper.readValue(argString, TaskArg.class);
@@ -31,7 +33,15 @@ class TaskQueueApplicationTests {
         });
         queue.addTask("task_1", new TaskArg("some message"));
 
-        Thread.sleep(10000);
+        Thread.sleep(5000);
+
+        assertThat(queueConsumer.isWaiting()).isTrue();
+        System.out.println("consumer should be in sleeping status, try add a new task and see if consumer wake up immediately");
+        queue.addTask("task_1", new TaskArg("some message 1"));
+        Thread.sleep(10);
+        assertThat(queueConsumer.isRunning()).isTrue();
+
+        Thread.sleep(5000);
     }
 
     @Data
