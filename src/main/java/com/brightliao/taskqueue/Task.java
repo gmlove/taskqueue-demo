@@ -61,20 +61,27 @@ public class Task {
     public void markStarted() {
         this.status = TaskStatus.STARTED;
         this.startedAt = LocalDateTime.now();
+        this.heartbeatAt = LocalDateTime.now();
         version += 1;
     }
 
     public void markSucceeded() {
         this.status = TaskStatus.SUCCEEDED;
         this.endedAt = LocalDateTime.now();
+        this.heartbeatAt = LocalDateTime.now();
         version += 1;
     }
 
     public void markFailed(Exception e) {
         this.status = TaskStatus.FAILED;
         this.endedAt = LocalDateTime.now();
+        this.heartbeatAt = LocalDateTime.now();
         this.message = this.message == null ? e.getMessage() : this.message + "\n" + e.getMessage();
         version += 1;
+    }
+
+    public void heartbeat() {
+        this.heartbeatAt = LocalDateTime.now();
     }
 
     public Long getId() {

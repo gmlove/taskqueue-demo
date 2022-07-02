@@ -91,7 +91,7 @@ public class TaskQueueTest {
         assertThat(task2.isSucceeded()).isEqualTo(false);
 
         consumer.triggerHeartBeat();
-        verify(taskRepository, times(1)).updateHeartbeat(anyList());
+        verify(taskRepository, times(3)).saveAll(anyList());
 
         queue.cleanZombieTasks();
         verify(taskRepository, times(1)).cleanZombieTasks(anyLong());

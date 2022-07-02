@@ -12,7 +12,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -22,7 +21,7 @@ public class TaskQueueConsumer implements InitializingBean {
     private final int tasksToFetchPerTime;
     private final Map<String, TaskRunnable> registeredTasks = new HashMap<>();
     private final Object consumerThreadCoordinator = new Object();
-    private ConcurrentLinkedDeque<Long> runningTaskIds = new ConcurrentLinkedDeque<>();
+    private ConcurrentLinkedDeque<Task> runningTasks = new ConcurrentLinkedDeque<>();
     private AtomicBoolean isWaiting = new AtomicBoolean(true);
     private boolean isStopping = false;
     private Thread consumerThread;
@@ -60,19 +59,23 @@ public class TaskQueueConsumer implements InitializingBean {
                 }
                 isWaiting.set(false);
                 log.info("found {} tasks.", tasks.size());
-                runningTaskIds.addAll(tasks.stream().map(Task::getId).collect(Collectors.toList()));
+                runningTasks.addAll(tasks);
                 for (Task task : tasks) {
                     try {
                         log.info("start to run task {}(id={}).", task.getType(), task.getId());
                         queue.markStarted(task);
-                        registeredTasks.get(task.getType()).run(task.getArg());
+                        final TaskRunnable taskRunnable = registeredTasks.get(task.getType());
+                        if (taskRunnable == null) {
+                            throw new RuntimeException("task not registered for type: " + task.getTaskType());
+                        }
+                        taskRunnable.run(task.getArg());
                         queue.markSucceeded(task);
                         log.info("run task {}(id={}) succeeded.", task.getType(), task.getId());
                     } catch (Exception e) {
                         queue.markFailed(task, e);
                         log.warn("run task {}(id={}) failed.", task.getType(), task.getId(), e);
                     } finally {
-                        runningTaskIds.remove(task.getId());
+                        runningTasks.remove(task);
                     }
                 }
             }
@@ -96,7 +99,11 @@ public class TaskQueueConsumer implements InitializingBean {
 
     @Scheduled(fixedRate = HEARTBEAT_INTERVAL)
     public void triggerHeartBeat() {
-        queue.heartbeat(runningTaskIds);
+        try {
+            queue.heartbeat(runningTasks);
+        } catch (Exception e) {
+            log.error("heart beat failed.", e);
+        }
     }
 
     public boolean isWaiting() {

@@ -93,16 +93,8 @@ public class JpaTaskRepository implements TaskRepository {
     }
 
     @Override
-    public void updateHeartbeat(List<Long> taskIds) {
-        if (taskIds.isEmpty()) {
-            return;
-        }
-        taskRepository.updateHeartbeat(taskIds, LocalDateTime.now());
-    }
-
-    @Override
-    public void cleanZombieTasks(long heartbeatTimeout) {
-        taskRepository.cleanZombieTasks(heartbeatTimeout);
+    public int cleanZombieTasks(long heartbeatTimeout) {
+        return taskRepository.cleanZombieTasks(heartbeatTimeout);
     }
 
     @Repository
@@ -123,13 +115,6 @@ public class JpaTaskRepository implements TaskRepository {
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(LocalDateTime.now()));
             return cleanZombieTasks(minHeartbeatTime, message, List.of(TaskStatus.RUNNING, TaskStatus.STARTED), TaskStatus.PENDING);
         }
-
-        @Modifying
-        @Query("UPDATE JpaTaskRepository$TaskEntity t SET "
-                + "version = version + 1, "
-                + "heartbeatAt = :heartbeatTime "
-                + "WHERE id in :ids")
-        void updateHeartbeat(@Param("ids") List<Long> ids, @Param("heartbeatTime") LocalDateTime heartbeatTime);
 
     }
 

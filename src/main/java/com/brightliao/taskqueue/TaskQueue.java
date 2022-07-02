@@ -77,18 +77,19 @@ public class TaskQueue {
         });
     }
 
-    @Scheduled(fixedRate = HEARTBEAT_INTERVAL * 3)
+    @Scheduled(fixedRate = HEARTBEAT_INTERVAL * 3, initialDelay = HEARTBEAT_INTERVAL * 3)
     public void cleanZombieTasks() {
         transactionTemplate.executeWithoutResult(status -> {
-            taskRepository.cleanZombieTasks(HEARTBEAT_INTERVAL * 3);
+            log.info("start to clean zombie tasks.");
+            int cleanedCount = taskRepository.cleanZombieTasks(HEARTBEAT_INTERVAL * 3);
+            log.info("clean {} zombie tasks.", cleanedCount);
         });
     }
 
-    public void heartbeat(Iterable<Long> runningTaskIds) {
-        var ids = new ArrayList<Long>();
-        runningTaskIds.forEach(ids::add);
+    public void heartbeat(ConcurrentLinkedDeque<Task> runningTasks) {
+        runningTasks.forEach(Task::heartbeat);
         transactionTemplate.executeWithoutResult(status -> {
-            taskRepository.updateHeartbeat(ids);
+            taskRepository.saveAll(new ArrayList<>(runningTasks));
         });
     }
 }
