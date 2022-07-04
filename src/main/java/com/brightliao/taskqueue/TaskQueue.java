@@ -70,9 +70,9 @@ public class TaskQueue {
         this.newTaskListeners.add(listener);
     }
 
-    public void markStarted(Task task) {
+    public void markRunning(Task task) {
         transactionTemplate.executeWithoutResult(status -> {
-            task.markStarted();
+            task.markRunning();
             taskRepository.save(task);
         });
     }

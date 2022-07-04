@@ -55,6 +55,7 @@ public class Task {
     public void markRunning() {
         this.status = TaskStatus.RUNNING;
         this.runAt = LocalDateTime.now();
+        this.heartbeatAt = LocalDateTime.now();
         version += 1;
     }
 

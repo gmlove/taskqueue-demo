@@ -63,7 +63,7 @@ public class TaskQueueConsumer implements InitializingBean {
                 for (Task task : tasks) {
                     try {
                         log.info("start to run task {}(id={}).", task.getType(), task.getId());
-                        queue.markStarted(task);
+                        queue.markRunning(task);
                         final TaskHandler taskHandler = registeredTasks.get(task.getType());
                         if (taskHandler == null) {
                             throw new RuntimeException("task not registered for type: " + task.getTaskType());
