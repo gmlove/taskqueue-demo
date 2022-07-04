@@ -48,10 +48,10 @@ public class TaskQueueTest {
         var queue = new TaskQueue(taskRepository, tt, objectMapper);
         var consumer = new TaskQueueConsumer(queue, 1);
 
-        var task1Runnable = mock(TaskRunnable.class);
-        var task2Runnable = mock(TaskRunnable.class);
-        consumer.registerTask("task_type_1", task1Runnable);
-        consumer.registerTask("task_type_2", task2Runnable);
+        var task1Handler = mock(TaskHandler.class);
+        var task2Handler = mock(TaskHandler.class);
+        consumer.registerTask("task_type_1", task1Handler);
+        consumer.registerTask("task_type_2", task2Handler);
 
         // run task1 successfully
         var task1Arg = new TaskType1Arg("some arg");
@@ -69,7 +69,7 @@ public class TaskQueueTest {
         verify(taskRepository, times(3)).save(any(Task.class));
         // started
         verify(taskRepository, times(1)).saveAll(anyList());
-        verify(task1Runnable, times(1)).run(eq("{\"arg\":\"some arg\"}"));
+        verify(task1Handler, times(1)).run(eq("{\"arg\":\"some arg\"}"));
         assertThat(task1.isSucceeded()).isEqualTo(true);
 
         // run task2 failed
@@ -77,7 +77,7 @@ public class TaskQueueTest {
         final Task task2 = someTask(2L, "task_type_2", "{\"arg\":\"some arg\"}");
         when(taskRepository.findNewTasks(eq(1))).thenReturn(List.of(task2)).thenReturn(List.of());
         ;
-        doThrow(RuntimeException.class).when(task2Runnable).run(eq("{\"arg\":\"some arg\"}"));
+        doThrow(RuntimeException.class).when(task2Handler).run(eq("{\"arg\":\"some arg\"}"));
 
         queue.addTask("task_type_2", task2Arg);
 
@@ -87,7 +87,7 @@ public class TaskQueueTest {
         verify(taskRepository, times(6)).save(any(Task.class));
         // started
         verify(taskRepository, times(2)).saveAll(anyList());
-        verify(task2Runnable, times(1)).run(eq("{\"arg\":\"some arg\"}"));
+        verify(task2Handler, times(1)).run(eq("{\"arg\":\"some arg\"}"));
         assertThat(task2.isSucceeded()).isEqualTo(false);
 
         consumer.triggerHeartBeat();

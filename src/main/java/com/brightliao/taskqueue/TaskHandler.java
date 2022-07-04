@@ -1,6 +1,6 @@
 package com.brightliao.taskqueue;
 
-public interface TaskRunnable {
+public interface TaskHandler {
 
     void run(String argString);
 }

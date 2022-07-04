@@ -19,7 +19,7 @@ public class TaskQueueConsumer implements InitializingBean {
 
     private final TaskQueue queue;
     private final int tasksToFetchPerTime;
-    private final Map<String, TaskRunnable> registeredTasks = new HashMap<>();
+    private final Map<String, TaskHandler> registeredTasks = new HashMap<>();
     private final Object consumerThreadCoordinator = new Object();
     private ConcurrentLinkedDeque<Task> runningTasks = new ConcurrentLinkedDeque<>();
     private AtomicBoolean isWaiting = new AtomicBoolean(true);
@@ -32,11 +32,11 @@ public class TaskQueueConsumer implements InitializingBean {
         queue.onNewTask(this::notifyNewTask);
     }
 
-    public void registerTask(String taskType, TaskRunnable taskRunnable) {
+    public void registerTask(String taskType, TaskHandler taskHandler) {
         if (registeredTasks.containsKey(taskType)) {
             throw new RuntimeException("task has been registered already: " + taskType);
         }
-        registeredTasks.put(taskType, taskRunnable);
+        registeredTasks.put(taskType, taskHandler);
     }
 
     public void start() {
@@ -64,11 +64,11 @@ public class TaskQueueConsumer implements InitializingBean {
                     try {
                         log.info("start to run task {}(id={}).", task.getType(), task.getId());
                         queue.markStarted(task);
-                        final TaskRunnable taskRunnable = registeredTasks.get(task.getType());
-                        if (taskRunnable == null) {
+                        final TaskHandler taskHandler = registeredTasks.get(task.getType());
+                        if (taskHandler == null) {
                             throw new RuntimeException("task not registered for type: " + task.getTaskType());
                         }
-                        taskRunnable.run(task.getArg());
+                        taskHandler.run(task.getArg());
                         queue.markSucceeded(task);
                         log.info("run task {}(id={}) succeeded.", task.getType(), task.getId());
                     } catch (Exception e) {
