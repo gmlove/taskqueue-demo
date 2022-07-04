@@ -31,17 +31,7 @@ public class TaskQueueTest {
 
     @Test
     void should_run_task_from_queue() throws InterruptedException {
-        var tt = mock(TransactionTemplate.class);
-        when(tt.execute(any())).thenAnswer(answer -> {
-            final TransactionCallback<?> arg = (TransactionCallback<?>) answer.getArgument(0);
-            log.info("execute in transaction: {}", arg);
-            return arg.doInTransaction(new SimpleTransactionStatus());
-        });
-
-        doAnswer(answer -> {
-            ((Consumer<TransactionStatus>) answer.getArgument(0)).accept(new SimpleTransactionStatus());
-            return null;
-        }).when(tt).executeWithoutResult(any());
+        TransactionTemplate tt = mockTransactionTemplate();
 
         var taskRepository = mock(TaskRepository.class);
         final ObjectMapper objectMapper = new ObjectMapper();
@@ -95,6 +85,44 @@ public class TaskQueueTest {
 
         queue.cleanZombieTasks();
         verify(taskRepository, times(1)).cleanZombieTasks(anyLong());
+    }
+
+    @Test
+    void should_fail_task_if_no_handler_registered() throws InterruptedException {
+        TransactionTemplate tt = mockTransactionTemplate();
+
+        var taskRepository = mock(TaskRepository.class);
+        final ObjectMapper objectMapper = new ObjectMapper();
+        var queue = new TaskQueue(taskRepository, tt, objectMapper);
+        var consumer = new TaskQueueConsumer(queue, 1);
+
+        var task1Arg = new TaskType1Arg("some arg");
+        final Task task1 = someTask(1L, "some_unknown_task", "{\"arg\":\"some arg\"}");
+        when(taskRepository.findNewTasks(eq(1))).thenReturn(List.of(task1)).thenReturn(List.of());
+        when(taskRepository.saveAll(anyList())).thenAnswer(answer -> answer.getArgument(0));
+        when(taskRepository.save(any())).thenAnswer(answer -> answer.getArgument(0));
+
+        queue.addTask("some_unknown_task", task1Arg);
+        consumer.start();
+
+        Thread.sleep(500);
+
+        assertThat(task1.isSucceeded()).isEqualTo(false);
+    }
+
+    private TransactionTemplate mockTransactionTemplate() {
+        var tt = mock(TransactionTemplate.class);
+        when(tt.execute(any())).thenAnswer(answer -> {
+            final TransactionCallback<?> arg = (TransactionCallback<?>) answer.getArgument(0);
+            log.info("execute in transaction: {}", arg);
+            return arg.doInTransaction(new SimpleTransactionStatus());
+        });
+
+        doAnswer(answer -> {
+            ((Consumer<TransactionStatus>) answer.getArgument(0)).accept(new SimpleTransactionStatus());
+            return null;
+        }).when(tt).executeWithoutResult(any());
+        return tt;
     }
 
     private Task someTask(long id, String taskType, String taskArg) {

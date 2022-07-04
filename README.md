@@ -48,3 +48,9 @@ In this demo, we'll see:
 - Start another consumer
 - Wait until the other consumer to clean zombie tasks and pick up the cleaned task
 
+### Case 5: raise exception and fail task when no task handler registered for some task type
+
+- Start one consumer
+- Add 1 task with no handler registered
+- Check to see if the task failed after a while.
+
